@@ -6,6 +6,12 @@ export async function POST() {
   const response = await generateText({
   model: google('gemini-3.6-flash'),
   prompt: 'Write a vegetarian lasagna recipe for 4 people.',
+  experimental_telemetry: {
+    
+    isEnabled:true,
+    recordInputs:true,
+    recordOutputs:true
+  },
 })
 
 return Response.json({response});

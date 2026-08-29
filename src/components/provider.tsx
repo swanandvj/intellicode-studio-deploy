@@ -1,6 +1,6 @@
 "use client"
 import { Authenticated, AuthLoading, ConvexReactClient, Unauthenticated } from "convex/react"
-import { ClerkProvider, useAuth,SignInButton,SignUpButton, UserButton} from "@clerk/nextjs"
+import { ClerkProvider, useAuth} from "@clerk/nextjs"
 import { ConvexProviderWithClerk } from "convex/react-clerk"
 import { ThemeProvider } from "./theme-provider"
 import { UnauthenticatedView } from "@/features/auth/components/unauthenticated-view"

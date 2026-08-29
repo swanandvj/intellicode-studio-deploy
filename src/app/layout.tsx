@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css"
-import { ThemeProvider } from "@/components/theme-provider";
 import { ClerkProvider, SignedIn, SignedOut, SignIn, SignInButton, SignUp, SignUpButton, UserButton } from '@clerk/nextjs'
 import { dark } from "@clerk/themes"
 import { Provider } from "@/components/provider";
@@ -46,7 +45,7 @@ export default function RootLayout({
                   </SignUpButton>
                 </SignedOut>
                 <SignedIn>
-                  <UserButton />
+                  {/* <UserButton /> */}
                 </SignedIn>
 
             </header>

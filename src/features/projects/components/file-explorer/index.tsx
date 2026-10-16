@@ -14,7 +14,7 @@ import { Tree } from './tree'
 const FileExplorer = ({ projectId }: {
     projectId: Id<"projects">
 }) => {
-    const [isOpen, setIsOpen] = useState(false)
+    const [isOpen, setIsOpen] = useState(true)
     const project = UseProject(projectId)
     const [collapseKey, setCollapseKey] = useState(0)
     const [creating, setCreating] = useState<"file" | "folder" | null>(null)

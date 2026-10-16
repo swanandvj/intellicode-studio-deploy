@@ -1,7 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values"
 import { verifyAuth } from "./Auth";
-import { Id } from "./_generated/dataModel";
+import { Doc, Id } from "./_generated/dataModel";
 
 
 export const getFiles = query({
@@ -10,7 +10,7 @@ export const getFiles = query({
         const identity = await verifyAuth(ctx)
         const project = await ctx.db.get("projects", args.projectId);
         if (!identity) {
-            return []
+            throw new Error("Unauthorized");
         }
         if (!project) {
             throw new Error("project not found")
@@ -34,7 +34,7 @@ export const getFile = query({
         const file = await ctx.db.get("files", args.id);
 
         if (!identity) {
-            return []
+            throw new Error("Unauthorized");
         }
         if (!file) {
             throw new Error("file not found")
@@ -52,6 +52,48 @@ export const getFile = query({
     }
 })
 
+export const getFilePath = query({
+  args: { id: v.id("files") },
+  handler: async (ctx, args) => {
+    const identity = await verifyAuth(ctx);
+
+    const file = await ctx.db.get("files", args.id);
+    
+    if (!identity) {
+             throw new Error("Unauthorized");
+        }
+
+    if (!file) {
+      throw new Error("File not found");
+    }
+
+    const project = await ctx.db.get("projects", file.projectId);
+
+    if (!project) {
+      throw new Error("Project not found");
+    }
+
+    if (project.ownerID !== identity.subject) {
+      throw new Error("Unauthorized to access this project");
+    }
+
+    const path: { _id: string; name: string }[] = [];
+    let currentId: Id<"files"> | undefined = args.id;
+
+    while (currentId) {
+      const file = (await ctx.db.get("files", currentId)) as 
+        | Doc<"files">
+        | undefined;
+      if (!file) break;
+
+      path.unshift({ _id: file._id, name: file.name });
+      currentId = file.parentId;
+    }
+
+    return path;
+  },
+});
+
 export const getFolderContents = query({
     args: {
         projectId: v.id("projects"),
@@ -61,7 +103,7 @@ export const getFolderContents = query({
         const identity = await verifyAuth(ctx)
         const project = await ctx.db.get("projects", args.projectId);
         if (!identity) {
-            return []
+             throw new Error("Unauthorized");
         }
         if (!project) {
             throw new Error("project not found")
@@ -102,7 +144,7 @@ export const createFile = mutation({
 
         const project = await ctx.db.get("projects", args.projectId);
         if (!identity) {
-            return []
+             throw new Error("Unauthorized");
         }
         if (!project) {
             throw new Error("Project not found");
@@ -158,7 +200,7 @@ export const createFolder = mutation({
         const project = await ctx.db.get("projects", args.projectId);
         
         if (!identity) {
-            return []
+             throw new Error("Unauthorized");
         }
 
         if (!project) {
@@ -211,7 +253,7 @@ export const renameFile = mutation({
 
     const file = await ctx.db.get("files", args.id);
     if(!identity){
-        return []
+         throw new Error("Unauthorized");
     }
 
     if (!file) throw new Error("File not found");
@@ -272,7 +314,7 @@ export const deleteFile = mutation({
 
     const file = await ctx.db.get("files", args.id);
     if(!identity){
-        return []
+        throw new Error("Unauthorized");
     }
 
     if (!file) throw new Error("File not found");
@@ -340,7 +382,7 @@ export const updateFile = mutation({
     const file = await ctx.db.get("files", args.id);
 
     if(!identity){
-        return []
+        throw new Error("Unauthorized");
     }
 
     if (!file) throw new Error("File not found");

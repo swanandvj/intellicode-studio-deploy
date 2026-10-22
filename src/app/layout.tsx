@@ -4,6 +4,7 @@ import "./globals.css"
 import { ClerkProvider, SignedIn, SignedOut, SignIn, SignInButton, SignUp, SignUpButton, UserButton } from '@clerk/nextjs'
 import { dark } from "@clerk/themes"
 import { Provider } from "@/components/provider";
+import { Toaster } from "sonner";
 
 
 const inter = Inter({
@@ -50,6 +51,7 @@ export default function RootLayout({
 
             </header>
             {children}
+            <Toaster/>
           </Provider>
         
       </body>

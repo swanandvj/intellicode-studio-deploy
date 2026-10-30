@@ -5,6 +5,7 @@ import { ClerkProvider, SignedIn, SignedOut, SignIn, SignInButton, SignUp, SignU
 import { dark } from "@clerk/themes"
 import { Provider } from "@/components/provider";
 import { Toaster } from "sonner";
+import "allotment/dist/style.css";
 
 
 const inter = Inter({

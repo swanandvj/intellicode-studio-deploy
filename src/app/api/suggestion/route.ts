@@ -82,7 +82,7 @@ export async function POST(request: Request) {
       .replace("{lineNumber}", lineNumber.toString());
 
     const { output } = await generateText({
-      model:  google('gemini-3.6-flash'),
+      model:  google('gemini-3.8-flash'),
       output: Output.object({ schema: suggestionSchema }),
       prompt,
     });

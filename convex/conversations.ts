@@ -17,7 +17,7 @@ export const create = mutation({
       throw new Error("Project not found");
     }
 
-    if (project.ownerID !== identity.subject) {
+    if (project.ownerID !== identity?.subject) {
       throw new Error("Unauthorized to access this project");
     }
 
@@ -50,7 +50,7 @@ export const getById = query({
       throw new Error("Project not found");
     }
 
-    if (project.ownerID !== identity.subject) {
+    if (project.ownerID !== identity?.subject) {
       throw new Error("Unauthorized to access this project");
     }
 
@@ -71,7 +71,7 @@ export const getByProject = query({
       throw new Error("Project not found");
     }
 
-    if (project.ownerID !== identity.subject) {
+    if (project.ownerID !== identity?.subject) {
       throw new Error("Unauthorized to access this project");
     }
 
@@ -102,7 +102,7 @@ export const getMessages = query({
       throw new Error("Project not found");
     }
 
-    if (project.ownerID !== identity.subject) {
+    if (project.ownerID !== identity?.subject) {
       throw new Error("Unauthorized to access this project");
     }
 

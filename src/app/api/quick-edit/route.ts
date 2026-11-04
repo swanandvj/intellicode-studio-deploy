@@ -2,9 +2,19 @@ import { z } from "zod";
 import { generateText, Output } from "ai";
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { google } from "@ai-sdk/google";
 
+import { getAiModel } from "@/lib/ai";
+import { parseBody } from "@/lib/api-route";
 import { firecrawl } from "@/lib/firecrawl";
+
+// The editor gives up after 30 seconds, so stop just before it does
+const QUICK_EDIT_TIMEOUT_MS = 28_000;
+
+const requestSchema = z.object({
+  selectedCode: z.string().min(1, "Selected code is required"),
+  fullCode: z.string().optional(),
+  instruction: z.string().min(1, "Instruction is required"),
+});
 
 const quickEditSchema = z.object({
   editedCode: z
@@ -41,30 +51,25 @@ If the instruction is unclear or cannot be applied, return the original code unc
 </instructions>`;
 
 export async function POST(request: Request) {
+  const timeout = AbortSignal.timeout(QUICK_EDIT_TIMEOUT_MS);
+
   try {
     const { userId } = await auth();
-    const { selectedCode, fullCode, instruction } = await request.json();
 
     if (!userId) {
       return NextResponse.json(
         { error: "Unauthorized" },
-        { status: 400 }
+        { status: 401 }
       );
     }
 
-    if (!selectedCode) {
-      return NextResponse.json(
-        { error: "Selected code is required" },
-        { status: 400 }
-      );
+    const parsed = await parseBody(request, requestSchema);
+
+    if (parsed.response) {
+      return parsed.response;
     }
 
-    if (!instruction) {
-      return NextResponse.json(
-        { error: "Instruction is required" },
-        { status: 400 }
-      );
-    }
+    const { selectedCode, fullCode, instruction } = parsed.data;
 
     const urls: string[] = instruction.match(URL_REGEX) || [];
     let documentationContext = "";
@@ -102,13 +107,22 @@ export async function POST(request: Request) {
       .replace("{documentation}", documentationContext);
 
     const { output } = await generateText({
-      model: google("gemini-3.6-flash"),
+      model: getAiModel(),
       output: Output.object({ schema: quickEditSchema }),
       prompt,
+      maxRetries: 1,
+      abortSignal: AbortSignal.any([request.signal, timeout]),
     });
 
     return NextResponse.json({ editedCode: output.editedCode });
   } catch (error) {
+    if (timeout.aborted) {
+      return NextResponse.json(
+        { error: "The AI model took too long to respond" },
+        { status: 504 }
+      );
+    }
+
     console.error("Edit error:", error);
     return NextResponse.json(
       { error: "Failed to generate edit" },

@@ -6,15 +6,10 @@ import { FaGithub } from "react-icons/fa";
 import { SparkleIcon } from "lucide-react";
 import { Kbd } from "@/components/ui/kbd";
 import { ProjectsList } from "./projects-list";
-import { UseCreateProjects } from "../hooks/use-projects";
 import { useState,useEffect } from "react";
-import {
-    adjectives,
-    animals,
-    colors,
-    uniqueNamesGenerator,
-} from "unique-names-generator";
 import { ProjectCommandDialog } from "./projects-command-dialog";
+import { ImportGithubDialog } from "./import-github-dialog";
+import { NewProjectDialog } from "./new-project-dialog";
 const font = Poppins({
     subsets: ["latin"],
     weight: ["400", "500", "600", "700"],
@@ -22,14 +17,23 @@ const font = Poppins({
 
 export const ProjectsView = () => {
 
-    const createProject = UseCreateProjects();
     const [commandDialogOpen, setcommandDialogOpen] = useState(false)
+    const [importDialogOpen, setImportDialogOpen] = useState(false)
+    const [newProjectDialogOpen, setNewProjectDialogOpen] = useState(false)
     useEffect(() => {
       const handleKeyDown = (e: KeyboardEvent) =>{
         if(e.metaKey || e.ctrlKey){
             if(e.key === "k"){
                 e.preventDefault()
                 setcommandDialogOpen(true)
+            }
+            if(e.key === "i"){
+                e.preventDefault()
+                setImportDialogOpen(true)
+            }
+            if(e.key === "j"){
+                e.preventDefault()
+                setNewProjectDialogOpen(true)
             }
         }
       }
@@ -42,6 +46,12 @@ export const ProjectsView = () => {
         <ProjectCommandDialog
         open={commandDialogOpen}
         onOpenChange={setcommandDialogOpen}/>
+        <ImportGithubDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}/>
+        <NewProjectDialog
+        open={newProjectDialogOpen}
+        onOpenChange={setNewProjectDialogOpen}/>
         <div className="min-h-screen bg-sidebar flex flex-col items-center justify-center p-6 md:p-16">
             <div className="w-full max-w-sm mx-auto flex flex-col gap-4 items-center">
 
@@ -62,21 +72,7 @@ export const ProjectsView = () => {
 
                         <Button
                             variant="outline"
-                            onClick={() => {
-                                const projectName = uniqueNamesGenerator({
-                                    dictionaries: [
-                                        adjectives,
-                                        animals,
-                                        colors,
-                                    ],
-                                    separator: "-",
-                                    length: 3,
-                                });
-
-                                createProject({
-                                    name: projectName,
-                                });
-                            }}
+                            onClick={() => setNewProjectDialogOpen(true)}
                             className="h-full items-start justify-start p-4 bg-background border flex flex-col gap-6 rounded-none" >
                             <div className="flex items-center justify-between w-full">
                                 <SparkleIcon className="size-4" />
@@ -89,7 +85,7 @@ export const ProjectsView = () => {
                             </div>
                         </Button>
                         <Button
-                            variant="outline" onClick={() => { }} className="h-full items-start justify-start p-4 bg-background border flex flex-col gap-6 rounded-none" >
+                            variant="outline" onClick={() => setImportDialogOpen(true)} className="h-full items-start justify-start p-4 bg-background border flex flex-col gap-6 rounded-none" >
                             <div className="flex items-center justify-between w-full">
                                 <FaGithub className="size-4" />
                                 <Kbd className="bg-accent border ">ctrl+i</Kbd>

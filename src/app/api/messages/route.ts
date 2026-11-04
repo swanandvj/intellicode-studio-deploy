@@ -4,6 +4,9 @@ import { auth } from "@clerk/nextjs/server";
 
 import { inngest } from "@/inngest/client";
 import { convex } from "@/lib/convex-client";
+import { parseBody, workerUnavailableResponse } from "@/lib/api-route";
+import { cancelProcessingMessages } from "@/lib/cancel-messages";
+import { getOwnedConversation } from "@/lib/project-access";
 
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
@@ -29,14 +32,19 @@ export async function POST(request: Request) {
     );
   }
 
-  const body = await request.json();
-  const { conversationId, message } = requestSchema.parse(body);
+  const parsed = await parseBody(request, requestSchema);
 
-  // Call convex mutation, query
-  const conversation = await convex.query(api.system.getConversationById, {
-    internalKey,
-    conversationId: conversationId as Id<"conversations">,
-  });
+  if (parsed.response) {
+    return parsed.response;
+  }
+
+  const { conversationId, message } = parsed.data;
+
+  const conversation = await getOwnedConversation(
+    conversationId,
+    userId,
+    internalKey
+  );
 
   if (!conversation) {
     return NextResponse.json(
@@ -47,10 +55,11 @@ export async function POST(request: Request) {
 
   const projectId = conversation.projectId;
 
-  // TODO: Check for processing messages
+  // Sending a new message replaces anything still running in this project
+  await cancelProcessingMessages(projectId, internalKey);
 
   // Create user message
-  await convex.mutation(api.system.createMessage, {
+  const userMessageId = await convex.mutation(api.system.createMessage, {
     internalKey,
     conversationId: conversationId as Id<"conversations">,
     projectId,
@@ -71,17 +80,32 @@ export async function POST(request: Request) {
     }
   );
 
-  // TODO: Invoke inngest to process the message
-  const event = await inngest.send({
-    name: "message/sent",
-    data: {
-      messageId: assistantMessageId,
-    },
-  });
+  // Trigger Inngest to process the message
+  try {
+    const event = await inngest.send({
+      name: "message/sent",
+      data: {
+        messageId: assistantMessageId,
+        conversationId,
+        projectId,
+        message,
+      },
+    });
 
-  return NextResponse.json({
-    success: true,
-    eventId: event.ids[0],
-    messageId: assistantMessageId,
-  });
+    return NextResponse.json({
+      success: true,
+      eventId: event.ids[0],
+      messageId: assistantMessageId,
+    });
+  } catch (error) {
+    console.error("Failed to send message/sent event", error);
+
+    // Nothing will ever answer these, so don't leave a spinner in the conversation
+    await convex.mutation(api.system.deleteMessages, {
+      internalKey,
+      messageIds: [userMessageId, assistantMessageId],
+    });
+
+    return workerUnavailableResponse();
+  }
 };

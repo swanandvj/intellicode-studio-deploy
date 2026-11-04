@@ -39,6 +39,10 @@ export const UseCreateProjects = () =>{
         }
     )
 } 
+export const useUpdateProjectSettings = () => {
+    return useMutation(api.projects.updateSettings)
+}
+
 export const useRenameProject = (projectId: Id<"projects">) =>{
     return useMutation(api.projects.rename).withOptimisticUpdate(
         (localStore,args)=>{

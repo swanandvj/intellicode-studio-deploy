@@ -2,6 +2,35 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values"
 import { verifyAuth } from "./Auth";
 
+export const updateSettings = mutation({
+    args: {
+        id: v.id("projects"),
+        settings: v.object({
+            installCommand: v.optional(v.string()),
+            devCommand: v.optional(v.string()),
+        }),
+    },
+    handler: async (ctx, args) => {
+        const identity = await verifyAuth(ctx)
+        if (!identity) {
+            throw new Error("Not authenticated")
+        }
+
+        const project = await ctx.db.get(args.id)
+        if (!project) {
+            throw new Error("project not found")
+        }
+        if (project.ownerID !== identity.subject) {
+            throw new Error("Unauthorized access to this project")
+        }
+
+        await ctx.db.patch(args.id, {
+            settings: args.settings,
+            updatedAt: Date.now(),
+        })
+    }
+})
+
 export const create = mutation({
     args: {
         name: v.string(),

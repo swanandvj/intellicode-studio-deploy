@@ -2,10 +2,11 @@
 import { useState } from "react"
 import { cn } from "@/lib/utils"
 import { Id } from "../../../../convex/_generated/dataModel"
-import { FaGithub } from "react-icons/fa"
 import { Allotment } from "allotment"
 import FileExplorer from "./file-explorer"
 import {EditorView} from "@/features/editor/components/editor-view"
+import { PreviewView } from "./preview-view"
+import { ExportPopover } from "./export-popover"
 const MIN_SIDEBAR_WIDTH = 200;
 const MAX_SIDEBAR_WIDTH = 800;
 const DEFAULT_SIDEBAR_WIDTH = 350;
@@ -37,6 +38,8 @@ export const ProjectIdView = ({ projectId }: {
     projectId: Id<"projects">
 }) => {
     const [activeView, setActiveView] = useState<"editor" | "preview">("editor");
+    // The preview runs a full dev server in the browser, so wait until it's opened
+    const [previewOpened, setPreviewOpened] = useState(false);
 
     return (
         <div className="h-full flex flex-col">
@@ -48,12 +51,9 @@ export const ProjectIdView = ({ projectId }: {
                 <Tab
                     label="preview"
                     isActive={activeView === "preview"}
-                    onClick={() => { setActiveView("preview") }} />
+                    onClick={() => { setActiveView("preview"); setPreviewOpened(true) }} />
                 <div className="flex-1 flex justify-end h-full">
-                    <div className="flex items-center gap-1.5 h-full px-3 cursor-pointer text-muted-foreground border-l hover:bg-accent/30">
-                        <FaGithub className="size-3.5" />
-                        <span>export</span>
-                    </div>
+                    <ExportPopover projectId={projectId} />
                 </div>
             </nav>
             <div className="flex-1 relative">
@@ -79,7 +79,7 @@ export const ProjectIdView = ({ projectId }: {
                     "absolute inset-0",
                     activeView === "preview" ? "visible" : "invisible"
                 )}>
-                    <div>Preview</div>
+                    {previewOpened && <PreviewView projectId={projectId} />}
                 </div>
 
             </div>

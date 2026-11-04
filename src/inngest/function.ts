@@ -1,7 +1,7 @@
 // src/inngest/functions.ts
 import { inngest } from "./client";
 import { generateText } from "ai";
-import { google } from '@ai-sdk/google';
+import { getAiModel } from "@/lib/ai";
 import { firecrawl } from "@/lib/firecrawl";
 
 const URL_REGEX = /https?:\/\/[^\s]+/g;
@@ -35,7 +35,7 @@ export const demoGenerate = inngest.createFunction(
 
     await step.run("generate-text", async () => {
       return await generateText({
-        model: google('gemini-3.6-flash'),
+        model: getAiModel(),
         prompt: finalPrompt,
         experimental_telemetry: {
           isEnabled: true,

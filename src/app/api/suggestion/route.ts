@@ -2,7 +2,23 @@ import { generateText, Output } from "ai";
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { google } from "@ai-sdk/google";
+
+import { getAiModel } from "@/lib/ai";
+import { parseBody } from "@/lib/api-route";
+
+// The editor gives up after 10 seconds, so stop just before it does
+const SUGGESTION_TIMEOUT_MS = 9_000;
+
+const requestSchema = z.object({
+  fileName: z.string(),
+  code: z.string().min(1, "Code is required"),
+  currentLine: z.string(),
+  previousLines: z.string().optional(),
+  textBeforeCursor: z.string(),
+  textAfterCursor: z.string(),
+  nextLines: z.string().optional(),
+  lineNumber: z.number(),
+});
 
 const suggestionSchema = z.object({
   suggestion: z
@@ -43,14 +59,22 @@ Your suggestion is inserted immediately after the cursor, so never suggest code 
 </instructions>`;
 
 export async function POST(request: Request) {
+  const timeout = AbortSignal.timeout(SUGGESTION_TIMEOUT_MS);
+
   try {
     const { userId } = await auth();
 
     if (!userId) {
       return NextResponse.json(
         { error: "Unauthorized" },
-        { status: 403 },
+        { status: 401 },
       );
+    }
+
+    const parsed = await parseBody(request, requestSchema);
+
+    if (parsed.response) {
+      return parsed.response;
     }
 
     const {
@@ -62,14 +86,7 @@ export async function POST(request: Request) {
       textAfterCursor,
       nextLines,
       lineNumber,
-    } = await request.json();
-
-    if (!code) {
-      return NextResponse.json(
-        { error: "Code is required" },
-        { status: 400 }
-      );
-    }
+    } = parsed.data;
 
     const prompt = SUGGESTION_PROMPT
       .replace("{fileName}", fileName)
@@ -82,13 +99,21 @@ export async function POST(request: Request) {
       .replace("{lineNumber}", lineNumber.toString());
 
     const { output } = await generateText({
-      model:  google('gemini-3.8-flash'),
+      model: getAiModel(),
       output: Output.object({ schema: suggestionSchema }),
       prompt,
+      // A late completion is useless, so fail fast instead of retrying
+      maxRetries: 0,
+      abortSignal: AbortSignal.any([request.signal, timeout]),
     });
 
     return NextResponse.json({ suggestion: output.suggestion })
   } catch (error) {
+    // Autocomplete just stays quiet if the model was too slow or the user kept typing
+    if (timeout.aborted || request.signal.aborted) {
+      return NextResponse.json({ suggestion: "" });
+    }
+
     console.error("Suggestion error: ", error);
     return NextResponse.json(
       { error: "Failed to generate suggestion" },

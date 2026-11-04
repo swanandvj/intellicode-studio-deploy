@@ -1,5 +1,5 @@
 import ky from "ky";
-import { Octokit } from "octokit";
+import { Octokit, RequestError } from "octokit";
 import { NonRetriableError } from "inngest";
 
 import { convex } from "@/lib/convex-client";
@@ -87,12 +87,32 @@ export const exportToGithub = inngest.createFunction(
 
     // Create the new repository with auto_init to have an initial commit
     const { data: repo } = await step.run("create-repo", async () => {
-      return await octokit.rest.repos.createForAuthenticatedUser({
-        name: repoName,
-        description: description || `Exported from Polaris`,
-        private: visibility === "private",
-        auto_init: true,
-      });
+      try {
+        return await octokit.rest.repos.createForAuthenticatedUser({
+          name: repoName,
+          description: description || `Exported from Polaris`,
+          private: visibility === "private",
+          auto_init: true,
+        });
+      } catch (error) {
+        // Retrying can't fix these, so fail now instead of spinning for minutes
+        if (error instanceof RequestError) {
+          // GitHub answers "Not Found" when the token lacks the "repo" scope
+          if (error.status === 401 || error.status === 403 || error.status === 404) {
+            throw new NonRetriableError(
+              "GitHub did not allow creating a repository. Reconnect GitHub with repository access."
+            );
+          }
+
+          if (error.status === 422) {
+            throw new NonRetriableError(
+              `Could not create "${repoName}". A repository with that name may already exist.`
+            );
+          }
+        }
+
+        throw error;
+      }
     });
 
     // Wait for GitHub to initialize the repo (auto_init is async on GitHub's side)
